@@ -20,9 +20,9 @@ from urllib.request import urlopen
 import csv
 
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "claimevaluatorcs329s-b77656fd4ca4.json" # change for your GCP key
-PROJECT = "ClaimEvaluatorCS329S" # change for your GCP project
-REGION = "us-west1" # change for your GCP region (where your model is hosted)
+#os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "claimevaluatorcs329s-b77656fd4ca4.json" # change for your GCP key
+#PROJECT = "ClaimEvaluatorCS329S" # change for your GCP project
+#REGION = "us-west1" # change for your GCP region (where your model is hosted)
 
 # API_TOKEN = "api_rkjoWdJwUXqOXbUXypHaZyYwzfiFRCDZcr"
 # API_URL = "https://api-inference.huggingface.co/models/textattack/bert-base-uncased-imdb"
@@ -34,7 +34,7 @@ REGION = "us-west1" # change for your GCP region (where your model is hosted)
 #     return json.loads(response.content.decode("utf-8"))
 
 # Get our Text
-@st.cache
+#@st.cache
 def get_text(raw_url):
 	page = urlopen(raw_url)
 	soup = BeautifulSoup(page)
@@ -62,7 +62,7 @@ def preprocess_text(tokenizer,text):
   return padded_sequence
 
 
-@st.cache
+#@st.cache
 def load_testing_data(filename_data):
 	with open(filename_data, 'rb') as handle:
 		data = pickle.load(handle)
@@ -77,7 +77,7 @@ def main():
 
 	outcomes = ["Article contains false information.", "Article contains some true and some false information.", "Article contains true information.", "Article contains unproven information."]    
 
-	pubhealth = load_testing_data('test.data')
+	#pubhealth = load_testing_data('test.data')
 	
 	st.title("Public Health Fake News Detector")
 
@@ -87,25 +87,27 @@ def main():
 
 	model = keras.models.load_model('lstm_token300_dim32_softmax.h5')
 
+	#Creatings sessions state so button states can bbe stored
+	session_state = SessionState.get(analyze_button_pred=False, analyze_button_url=False)
 
 	if options == "User Article Input":
+
+		#Setting other buttons states in different tabs to false
+		session_state.analyze_button_url = False
 
 		st.subheader("Prediction on article")    
 		text_box = st.text_area("Enter Text", "Type Here")
 
-		session_state = SessionState.get(analyze_button=False)
 
 		if text_box != 'Type Here':
 
-		   
-	
 			model_selected = st.selectbox("Select a model", ['Baseline LSTM'])
 
 			if st.button("Analyze"):
+				#session_state.analyze_button = True
+				session_state.analyze_button_pred = True
 
-				session_state.analyze_button = True
-
-			if session_state.analyze_button:
+			if session_state.analyze_button_pred:
 
 				X = preprocess_text(tokenizer,[text_box])
 
@@ -143,7 +145,7 @@ def main():
 
 				saved_data = [text_box, user_eval, test_class[0], correct_label, evidence]
 
-				if st.button("Submit") and session_state.analyze_button:
+				if st.button("Submit") and session_state.analyze_button_pred:
 
 					st.write("User Evaluation Submitted!")
 
@@ -151,16 +153,18 @@ def main():
 						wr = csv.writer(f, dialect='excel')
 						wr.writerow(saved_data)
 
-					session_state.analyze_button = False
-
+					session_state.analyze_button_pred = False
 
 
 	if options == "User Website Input":
+		
+		#Setting other buttons states in different tabs to false
+		session_state.analyze_button_pred = False
 
 		st.subheader("Prediction from URL")
 
 		raw_url = st.text_input("Enter URL", "Type Here")
-		session_state1 = SessionState.get(analyze_button=False)    
+
 		#text_limit = st.slider("Length of Text to Provide", 50,90)
 		if raw_url != 'Type Here':
 			
@@ -169,9 +173,9 @@ def main():
 
 			if st.button("Analyze"):
 
-				session_state1.analyze_button = True
+				session_state.analyze_button_url = True
 
-			if session_state1.analyze_button:
+			if session_state.analyze_button_url:
 
 				text = get_text(raw_url)
 
@@ -214,7 +218,7 @@ def main():
 
 				saved_data = [text, user_eval, test_class[0], correct_label, evidence]
 
-				if st.button("Submit") and session_state1.analyze_button:
+				if st.button("Submit") and session_state.analyze_button_url:
 
 					st.write("User Evaluation Submitted!")
 
@@ -222,15 +226,18 @@ def main():
 						wr = csv.writer(f, dialect='excel')
 						wr.writerow(saved_data)
 
-					session_state1.analyze_button = False
-
+					session_state.analyze_button_url = False
 
 
 	if options == "Testing":
 
 		st.subheader("Prediction on testing data")
 
-		session_state = SessionState.get(checkboxed=False)
+		#Setting other buttons states in different tabs to false
+		session_state.analyze_button_url = False
+		session_state.analyze_button_pred = False
+
+
 		model_selected = st.selectbox("Select a model", ['Baseline LSTM'])
 
 		user_input = st.number_input("Choose a test set example", 0, len(pubhealth)-1)
